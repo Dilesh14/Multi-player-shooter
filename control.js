@@ -2,6 +2,7 @@ const express = require('express');
 const sqlite3 = require('sqlite3');
 const hbs = require('express-hbs');
 const bodyParser = require('body-parser');
+const adminController = require('./controller/admin');
 const cookieSession = require("cookie-session");
 let jsonParser = bodyParser.json();
 const app = express(); 
@@ -298,23 +299,6 @@ app.get("/home",function(req,res){
     }
     
 });
-//req to admin page
-app.get("/admin",function(req,res){
-    
-    if(req.session.auth){
-        res.render("adminlogged",{
-            title:"Unavailable"
-        });
-    }
-    if (admin.status){
-        res.render("adminpage",{
-            title:"Admin Page"
-        });
-    }
-    res.render("admin",{
-        title:"Admin Page"
-    });
-});
 // for adding new users
 app.post('/new',jsonParser,function(req,res){
     let stuff = req.body;
@@ -427,6 +411,14 @@ app.post("/editUser",jsonParser,function(req,res){
         }
     });
 });
+/**
+ * Start routes setup
+ */
+app.use('/', adminController);
+
+/**
+ * End routes setup
+ */
 ///////////////////////////game engine////////////////////////////////////
 // to generate random colors
 getRandomColor=function() {
