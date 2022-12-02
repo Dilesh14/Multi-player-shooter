@@ -35,7 +35,27 @@ class SqlLiteUserAdapter extends UserAdapter {
     return result;
   }
 
-  getUser(username) {}
+  getUserDetail(username) {
+    const result = new Promise((a, b) => {
+      this.db.get(
+        `SELECT * FROM users WHERE username = ?`,
+        [username],
+        function (err, row) {
+          if (!err) {
+            if (row) {
+              a(row);
+            } else {
+              b("no user in the database");
+            }
+          } else {
+            b("error loading database");
+          }
+        }
+      );
+    });
+
+    return result;
+  }
 
   createUser(username, email, password) {
     const result = new Promise((a, b) => {

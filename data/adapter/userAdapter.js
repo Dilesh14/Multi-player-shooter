@@ -8,7 +8,7 @@ class UserAdapter {
   }
 
   getAllUsers() {}
-  getUser(username) {}
+  getUserDetail(username) {}
   createUser(username, email, password) {}
   deleteUser(username) {}
 }
