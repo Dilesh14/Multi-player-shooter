@@ -5,6 +5,7 @@ const bodyParser = require("body-parser");
 const adminController = require("./controller/admin");
 const cookieSession = require("cookie-session");
 let jsonParser = bodyParser.json();
+const SqlLiteUserAdapter = require("./data/adapter/SqlLiteUserAdapter");
 const app = express();
 
 //defining the admin
@@ -33,6 +34,8 @@ const allowedPages = [
   "/editUser",
   "/userpage",
 ];
+
+const sqlAdapter = SqlLiteUserAdapter.getInstance();
 
 //function to check the authentication
 function checkAuth(req, res, next) {
