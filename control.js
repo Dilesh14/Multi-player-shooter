@@ -6,6 +6,7 @@ const adminController = require("./controller/admin");
 const cookieSession = require("cookie-session");
 let jsonParser = bodyParser.json();
 const SqlLiteUserAdapter = require("./data/adapter/SqlLiteUserAdapter");
+const SqlLiteHighscoreAdapter = require("./data/adapter/sqlHighscoreAdapter");
 const app = express();
 
 //defining the admin
@@ -35,7 +36,8 @@ const allowedPages = [
   "/userpage",
 ];
 
-const sqlAdapter = SqlLiteUserAdapter.getInstance();
+const sqlUserAdapter = SqlLiteUserAdapter.getInstance();
+const sqlHighscoreAdapter = SqlLiteHighscoreAdapter.getInstance();
 
 //function to check the authentication
 function checkAuth(req, res, next) {
@@ -51,22 +53,22 @@ function checkAuth(req, res, next) {
   }
   //query to get highscore
   else if (req.url === "/getuserhighscore") {
-    db.all(`SELECT * FROM highscore`, [], function (err, rows) {
-      if (!err) {
-        res.send(JSON.stringify(rows));
-      }
-    });
+    sqlHighscoreAdapter
+      .getAllHighscores()
+      .then((results) => {
+        res.send(results);
+      })
+      .catch(console.log);
   }
+
   // query to get all the users
   else if (req.url === "/getallusers") {
-    db.all(`SELECT * FROM users`, [], function (err, row) {
-      if (!err) {
-        console.log(row);
-        res.send(JSON.stringify(row));
-      } else {
-        console.log("error");
-      }
-    });
+    sqlUserAdapter
+      .getAllUsers()
+      .then((result) => {
+        res.send(result);
+      })
+      .catch(console.log);
   }
   // sending the user name  to client if requested
   else if (req.url === "/getUser") {
@@ -114,97 +116,52 @@ function checkAuth(req, res, next) {
 app.set("view engine", "hbs");
 app.set("views", __dirname + "/views");
 
-// data bases
-const db = new sqlite3.Database(__dirname + "database.db", function (err) {
-  if (!err) {
-    db.serialize(() => {
-      db.run(`PRAGMA foreign_keys = ON`).run(`CREATE TABLE IF NOT EXISTS users(
-                username TEXT PRIMARY KEY,
-                password TEXT
-            )`).run(`CREATE TABLE IF NOT EXISTS highscore(
-                username TEXT,
-                highscore INTEGER DEFAULT 0,
-                    FOREIGN KEY (username) REFERENCES users(username) ON DELETE CASCADE ON UPDATE CASCADE
-            )`);
-      console.log("opened database");
-    });
-  }
-});
-
 //function to create users
 function newUser(res, stuff) {
   let flag = false;
-  db.serialize(() => {
-    db.get(
-      `INSERT INTO users(username,password) VALUES(?,?)`,
-      [stuff.user, stuff.pass],
-      function (err) {
-        if (err) {
-          let msg = {
-            text: false,
-          };
-          res.send(JSON.stringify(msg));
-        } else {
-          let msg = {
-            text: true,
-            location: "/",
-          };
-          res.send(JSON.stringify(msg));
-        }
-      }
-    ).get(
-      `INSERT INTO highscore(username,highscore) VALUES(?,?)`,
-      [stuff.user, 0],
-      function (err) {}
-    );
-  });
+  sqlUserAdapter
+    .createUser(stuff.user, null, stuff.pass)
+    .then((result) => res.send(result))
+    .catch((err) => res.send(err));
 }
 
 //for checking if the user is in the database
 //control comes here to check if the authentication is right
 function checkSignIn(req, res, stuff) {
-  db.get(
-    `SELECT * FROM users WHERE username = ?`,
-    [stuff.user],
-    function (err, row) {
-      if (!err) {
-        if (row) {
-          console.log(row);
-          if (stuff.pass === row.password) {
-            console.log("rendering the home page.....");
-            //defining the cookie
-            req.session.auth = true;
-            req.session.user = stuff.user;
+  sqlUserAdapter
+    .getUserDetail(stuff.user)
+    .then((db) => {
+      console.log(db);
+      if (db.password === stuff.pass) {
+        req.session.auth = true;
+        req.session.user = stuff.user;
 
-            let obj = {
-              location: "/home",
-              text: true,
-            };
-            res.send(JSON.stringify(obj));
-          } else {
-            req.session.auth = false;
-            let obj = {
-              text: false,
-              msg: "Password did not match",
-            };
-            res.send(JSON.stringify(obj));
-            console.log("User and Pass not match");
-          }
-        } else {
-          req.session.auth = false;
-          let obj = {
-            text: false,
-            msg: "no user " + stuff.user + " in the database",
-          };
-          res.send(JSON.stringify(obj));
-          console.log("NO data in database");
-        }
+        let obj = {
+          location: "/home",
+          text: true,
+        };
+        res.send(JSON.stringify(obj));
       } else {
-        console.log("Error loading database");
+        req.session.auth = false;
+        let obj = {
+          text: false,
+          msg: "Password did not match",
+        };
+        res.send(JSON.stringify(obj));
+        console.log("User and Pass not match");
       }
-    }
-  );
+    })
+    .catch((err) => {
+      req.session.auth = false;
+      const obj = {
+        text: false,
+        err: err,
+        msg: "no user " + stuff.user + " in the database",
+      };
+      res.send(JSON.stringify(obj));
+    });
 }
+
 app.use(
   cookieSession({
     name: "session",
@@ -308,33 +265,22 @@ app.post("/new", jsonParser, function (req, res) {
 // req to forget password
 app.post("/forgot", jsonParser, function (req, res) {
   let stuff = req.body;
-  db.get(
-    `SELECT * FROM users WHERE username = ?`,
-    [stuff.user],
-    function (err, row) {
-      if (!err) {
-        if (row) {
-          let msg = {
-            password: "Your Password is " + row.password,
-          };
-          console.log("got user sending the password");
-          res.send(JSON.stringify(msg));
-        } else {
-          let msg = {
-            password: "No user: " + stuff.user + " found!",
-          };
-          console.log("NO data in database");
-          res.send(JSON.stringify(msg));
-        }
-      } else {
-        let msg = {
-          password: "No user: " + stuff.user + " found!",
-        };
-        console.log("NO data in database");
-        res.send(JSON.stringify(msg));
-      }
-    }
-  );
+
+  sqlUserAdapter
+    .getUserDetail(stuff.user)
+    .then((result) => {
+      const msg = {
+        password: "Your Password is " + result.password,
+      };
+      res.send(JSON.stringify(msg));
+    })
+    .catch((err) => {
+      const msg = {
+        password: "No user: " + stuff.user + " found!",
+      };
+      console.log("NO data in database");
+      res.send(JSON.stringify(msg));
+    });
 });
 //to check if the admin password and username is correct
 // if correct send the admin page
@@ -369,54 +315,49 @@ app.get("/adminpage", jsonParser, function (req, res) {
 });
 // req from the adminpage to delete page
 app.post("/deleteUser", jsonParser, function (req, res) {
-  let stuff = req.body;
-  db.run(`DELETE FROM users WHERE username=?`, [stuff.user], function (err) {
-    if (!err) {
-      let msg = {
+  const stuff = req.body;
+  sqlUserAdapter
+    .deleteUser(stuff.user)
+    .then((r) => {
+      const msg = {
         location: "/adminpage",
       };
       res.send(JSON.stringify(msg));
-    }
-  });
+    })
+    .catch(console.log);
 });
+
 ////directing the request to the user page
 app.get("/userpage", jsonParser, function (req, res) {
-  db.get(
-    `SELECT * FROM highscore WHERE username = ?`,
-    [req.session.user],
-    function (err, row) {
-      if (req.session.auth) {
-        res.render("user", {
-          title: "User Page",
-          user: req.session.user,
-          highscore: row.highscore,
-        });
-      } else {
-        res.render("notallowed", {
-          title: "Error",
-        });
-      }
-    }
-  );
+  if (!req.session.auth) {
+    res.render("notallowed", {
+      title: "Error",
+    });
+    return;
+  }
+  sqlHighscoreAdapter
+    .getHighscoreOfUser(req.session.user)
+    .then((highscore) => {
+      res.render("user", {
+        title: "User Page",
+        user: req.session.user,
+        highscore: highscore,
+      });
+    })
+    .catch(console.log);
 });
+
 // post from the user edit page
 app.post("/editUser", jsonParser, function (req, res) {
   let stuff = req.body;
   console.log("upadte pass" + stuff.password);
-  db.run(
-    `UPDATE users SET password=? WHERE username=?`,
-    [stuff.password, req.session.user],
-    function (err) {
-      if (!err) {
-        let msg = {
-          text: "Password Updated",
-        };
-        res.send(JSON.stringify(msg));
-      } else {
-        console.log("error");
-      }
-    }
-  );
+
+  sqlUserAdapter
+    .updateUser(req.session.user, stuff.password)
+    .then((result) => {
+      res.send(result);
+    })
+    .catch(console.log);
 });
 /**
  * Start routes setup
@@ -547,14 +488,11 @@ Player.connect = function (socket) {
   socket.on("username", function (name) {
     player.username = name.user; //every socket connection is given the corresponding user name
     //query to get the highscore of the requested user
-    db.get(
-      `SELECT highscore FROM highscore WHERE username=?`,
-      [player.username],
-      function (err, row) {
-        console.log(row);
-        player.highscore = row.highscore;
-      }
-    );
+
+    sqlHighscoreAdapter
+      .getHighscoreOfUser(player.username)
+      .then((highscore) => (player.highscore = highscore))
+      .catch(console.log);
   });
   console.log("player" + player.username);
   //checks the input received from the socket for action of the player
@@ -590,11 +528,11 @@ Player.update = function () {
 
       if (player.score > player.highscore) {
         player.highscore = player.score;
-        db.run(
-          "UPDATE highscore SET highscore=? WHERE username=?",
-          [player.highscore, player.username],
-          function (err) {}
-        );
+
+        sqlHighscoreAdapter
+          .updateHighscoreOfUser(player.username, player.highscore)
+          .then()
+          .catch();
       }
 
       player.score = 0;
