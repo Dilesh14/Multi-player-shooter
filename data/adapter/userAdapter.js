@@ -13,6 +13,4 @@ class UserAdapter {
   deleteUser(username) {}
 }
 
-exports = {
-  UserAdapter,
-};
+module.exports = UserAdapter;

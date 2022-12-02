@@ -1,12 +1,13 @@
-import { UserAdapter } from "./userAdapter";
-import { Database } from "sqlite3";
+const UserAdapter = require("./userAdapter");
+const sqlite3 = require("sqlite3");
 
 class SqlLiteUserAdapter extends UserAdapter {
   constructor() {
-    this.db = new Database(__dirname + "database.db", (err) => {
+    super();
+    this.db = new sqlite3.Database(__dirname + "database.db", (err) => {
       if (!err) {
-        db.serialize(() => {
-          db.run(`PRAGMA foreign_keys = ON`)
+        this.db.serialize(() => {
+          this.db.run(`PRAGMA foreign_keys = ON`)
             .run(`CREATE TABLE IF NOT EXISTS users(
                     username TEXT PRIMARY KEY,
                     password TEXT
@@ -22,55 +23,75 @@ class SqlLiteUserAdapter extends UserAdapter {
   }
 
   getAllUsers() {
-    db.all(`SELECT * FROM users`, [], function (err, row) {
-      if (!err) {
-        console.log(row);
-        res.send(JSON.stringify(row));
-      } else {
-        console.log("error");
-      }
+    const result = new Promise((a, b) => {
+      this.db.all(`SELECT * FROM users`, [], function (err, row) {
+        if (!err) {
+          a(JSON.stringify(row));
+        } else {
+          b("error");
+        }
+      });
     });
+    return result;
   }
 
   getUser(username) {}
 
   createUser(username, email, password) {
-    this.db.serialize(() => {
-      this.db
-        .get(
-          `INSERT INTO users(username,password) VALUES(?,?)`,
-          [username, password],
-          function (err) {
-            if (err) {
-              let msg = {
-                text: false,
-              };
-              res.send(JSON.stringify(msg));
-            } else {
-              let msg = {
-                text: true,
-                location: "/",
-              };
-              res.send(JSON.stringify(msg));
+    const result = new Promise((a, b) => {
+      this.db.serialize(() => {
+        this.db
+          .get(
+            `INSERT INTO users(username,password) VALUES(?,?)`,
+            [username, password],
+            function (err) {
+              if (err) {
+                let msg = {
+                  text: false,
+                };
+                b(JSON.stringify(msg));
+              } else {
+                let msg = {
+                  text: true,
+                  location: "/",
+                };
+                a(JSON.stringify(msg));
+              }
             }
-          }
-        )
-        .get(
-          `INSERT INTO highscore(username,highscore) VALUES(?,?)`,
-          [username, 0],
-          function (err) {}
-        );
+          )
+          .get(
+            `INSERT INTO highscore(username,highscore) VALUES(?,?)`,
+            [username, 0],
+            function (err) {}
+          );
+      });
     });
+    return result;
   }
 
   deleteUser(username) {
-    db.run(`DELETE FROM users WHERE username=?`, [username], function (err) {
-      if (!err) {
-        let msg = {
-          location: "/adminpage",
-        };
-        res.send(JSON.stringify(msg));
-      }
+    const result = new Promise((a, b) => {
+      this.db.run(
+        `DELETE FROM users WHERE username=?`,
+        [username],
+        function (err) {
+          if (!err) {
+            let msg = {
+              location: "/adminpage",
+            };
+            a(JSON.stringify(msg));
+          } else {
+            b("delete failed");
+          }
+        }
+      );
     });
+    return result;
   }
+
+  static getInstance = () => {
+    return this.instance ? this.instance : new SqlLiteUserAdapter();
+  };
 }
+
+module.exports = SqlLiteUserAdapter;
