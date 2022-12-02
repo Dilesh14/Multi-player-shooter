@@ -94,6 +94,25 @@ class SqlLiteUserAdapter extends UserAdapter {
     return result;
   }
 
+  updateUser(username, password) {
+    return new Promise((a, b) => {
+      this.db.run(
+        `UPDATE users SET password=? WHERE username=?`,
+        [password, username],
+        function (err) {
+          if (!err) {
+            const msg = {
+              text: "Password Updated",
+            };
+            a(JSON.stringify(msg));
+          } else {
+            b("error");
+          }
+        }
+      );
+    });
+  }
+
   static getInstance = () => {
     return this.instance ? this.instance : new SqlLiteUserAdapter();
   };
