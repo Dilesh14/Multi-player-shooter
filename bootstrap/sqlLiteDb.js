@@ -18,9 +18,7 @@ class SqlLite {
       }
     });
   }
-  static getInstance = () => {
-    return this.instance ? this.instance : new SqlLite();
-  };
+  static instance = new SqlLite();
 }
 
 module.exports = SqlLite;

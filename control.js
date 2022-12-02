@@ -36,8 +36,8 @@ const allowedPages = [
   "/userpage",
 ];
 
-const sqlUserAdapter = SqlLiteUserAdapter.getInstance();
-const sqlHighscoreAdapter = SqlLiteHighscoreAdapter.getInstance();
+const sqlUserAdapter = SqlLiteUserAdapter.instance;
+const sqlHighscoreAdapter = SqlLiteHighscoreAdapter.instance;
 
 //function to check the authentication
 function checkAuth(req, res, next) {

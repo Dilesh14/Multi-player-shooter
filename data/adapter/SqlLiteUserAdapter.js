@@ -4,7 +4,7 @@ const sqlLite = require("../../bootstrap/sqlLiteDb");
 class SqlLiteUserAdapter extends UserAdapter {
   constructor() {
     super();
-    this.db = sqlLite.getInstance().db;
+    this.db = sqlLite.instance.db;
   }
 
   getAllUsers() {
@@ -113,9 +113,7 @@ class SqlLiteUserAdapter extends UserAdapter {
     });
   }
 
-  static getInstance = () => {
-    return this.instance ? this.instance : new SqlLiteUserAdapter();
-  };
+  static instance = new SqlLiteUserAdapter();
 }
 
 module.exports = SqlLiteUserAdapter;

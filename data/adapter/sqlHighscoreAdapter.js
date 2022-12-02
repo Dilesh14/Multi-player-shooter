@@ -3,7 +3,7 @@ const sql = require("../../bootstrap/sqlLiteDb");
 class SqlHighscoreAdapter extends HighScoreAdapter {
   constructor() {
     super();
-    this.db = sql.getInstance().db;
+    this.db = sql.instance.db;
   }
 
   getAllHighscores() {
@@ -53,9 +53,7 @@ class SqlHighscoreAdapter extends HighScoreAdapter {
 
   insertHighScore(username, highscore = 0) {}
 
-  static getInstance = () => {
-    return this.instance ? this.instance : new SqlHighscoreAdapter();
-  };
+  static instance = new SqlHighscoreAdapter();
 }
 
 module.exports = SqlHighscoreAdapter;
