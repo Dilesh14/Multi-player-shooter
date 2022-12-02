@@ -11,6 +11,7 @@ class UserAdapter {
   getUserDetail(username) {}
   createUser(username, email, password) {}
   deleteUser(username) {}
+  updateUser(username, password) {}
 }
 
 module.exports = UserAdapter;
