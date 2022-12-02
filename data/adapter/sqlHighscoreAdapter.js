@@ -3,14 +3,14 @@ const sql = require("../../bootstrap/sqlLiteDb");
 class SqlHighscoreAdapter extends HighScoreAdapter {
   constructor() {
     super();
-    this.db = sql.getInstance();
+    this.db = sql.getInstance().db;
   }
 
   getAllHighscores() {
     const result = new Promise((a, b) => {
-      this.db.all(`SELECT * FROM highscore`, [], function (err, rows) {
+      this.db.get(`SELECT * FROM highscore`, [], function (err, rows) {
         if (!err) {
-          a(JSON.stringify(rows));
+          a(JSON.stringify([rows]));
         } else {
           b("error");
         }
