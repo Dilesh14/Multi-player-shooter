@@ -3,6 +3,7 @@ const sqlite3 = require("sqlite3");
 const hbs = require("express-hbs");
 const bodyParser = require("body-parser");
 const adminController = require("./controller/adminController");
+const userController = require("./controller/userController");
 const cookieSession = require("cookie-session");
 let jsonParser = bodyParser.json();
 const SqlLiteUserAdapter = require("./data/adapter/SqlLiteUserAdapter");
@@ -41,64 +42,8 @@ const sqlHighscoreAdapter = SqlLiteHighscoreAdapter.instance;
 
 //function to check the authentication
 function checkAuth(req, res, next) {
-  // using req.url ==="/url" to avoid adding the pages to predefined list of allowed pages
-  if (req.url === "/signout") {
-    //instead of app.post we used this implementation
-    console.log(req.url);
-    req.session = null;
-    let msg = {
-      location: "/",
-    };
-    res.send(JSON.stringify(msg));
-  }
-  //query to get highscore
-  else if (req.url === "/getuserhighscore") {
-    sqlHighscoreAdapter
-      .getAllHighscores()
-      .then((results) => {
-        res.send(results);
-      })
-      .catch(console.log);
-  }
-
-  // query to get all the users
-  else if (req.url === "/getallusers") {
-    sqlUserAdapter
-      .getAllUsers()
-      .then((result) => {
-        res.send(result);
-      })
-      .catch(console.log);
-  }
-  // sending the user name  to client if requested
-  else if (req.url === "/getUser") {
-    // this for game to know the user name
-    let name = req.session.user;
-    let msg = {
-      user: name,
-    };
-    res.send(JSON.stringify(msg));
-  }
-  //request to user edit page
-  else if (req.url === "/reqeditUser") {
-    let msg = {
-      location: "/userpage",
-    };
-    res.send(JSON.stringify(msg));
-  }
-  // req to admin signout, this is the req coming from the button from the admin page
-  else if (req.url === "/adminsignout") {
-    console.log("frm admin:  " + req.session);
-    console.log("frm admin:  " + req.url);
-    admin.status = false;
-    let msg = {
-      location: "/",
-    };
-    req.session = null;
-    res.send(JSON.stringify(msg));
-  }
   // only the request to predefined pages comes here if the page is not defined it displays page not found error
-  else if (allowedPages.indexOf(req.url) === -1) {
+  if (allowedPages.indexOf(req.url) === -1) {
     console.log("fjjfjf" + "  " + req.url);
     res.render("notallowed", {
       title: "Page Not Found",
@@ -169,8 +114,6 @@ app.use(
   })
 );
 app.use(express.static(__dirname + "/Public"));
-app.use(checkAuth);
-
 app.get("/", function (req, res) {
   console.log("request for homepage");
   // if the  admin is signed in.. the users will not be allow to acces the page
@@ -363,10 +306,13 @@ app.post("/editUser", jsonParser, function (req, res) {
  * Start routes setup
  */
 app.use("/", adminController);
+app.use("/", userController);
 
 /**
  * End routes setup
  */
+app.use(checkAuth);
+
 ///////////////////////////game engine////////////////////////////////////
 // to generate random colors
 getRandomColor = function () {
